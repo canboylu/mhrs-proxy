@@ -26,10 +26,35 @@ export default async function handler(req, res) {
       }
     );
 
-    const data = await response.json();
-    return res.status(200).json(data);
+    // Önce response text olarak al
+    const responseText = await response.text();
+    
+    // Boş response kontrolü
+    if (!responseText || responseText.trim() === '') {
+      console.error('Empty response from MHRS API');
+      return res.status(502).json({ 
+        error: 'MHRS API boş yanıt döndürdü. Token süresi dolmuş olabilir.' 
+      });
+    }
+
+    // JSON parse et
+    let data;
+    try {
+      data = JSON.parse(responseText);
+    } catch (parseError) {
+      console.error('JSON parse error:', responseText);
+      return res.status(502).json({ 
+        error: 'MHRS API geçersiz JSON döndürdü',
+        raw: responseText.substring(0, 100) // İlk 100 karakter
+      });
+    }
+
+    return res.status(response.status).json(data);
   } catch (error) {
     console.error('Proxy error:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ 
+      error: error.message,
+      details: 'MHRS API\'ye erişim sağlanamadı' 
+    });
   }
 }
